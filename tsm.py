@@ -1,3 +1,5 @@
+"""use click to create a command line interface for running TSP simulations with geocoded cities. and use geopy to geocode city names to lat/lon coordinates. implement a nearest neighbor heuristic for TSP and allow running simulations starting from each city. output results sorted by total distance. It should be possible to run the script and see the results in the terminal. Also include a test suite using pytest to validate the functionality of the haversine function, nearest neighbor TSP, route distance calculation, and the overall simulation process."""
+
 try:
     from geopy.geocoders import Nominatim
     from geopy.exc import GeocoderTimedOut
@@ -6,6 +8,11 @@ except ModuleNotFoundError:
 
     class GeocoderTimedOut(Exception):
         pass
+
+try:
+    import click
+except ModuleNotFoundError:
+    click = None
 
 from math import radians, sin, cos, sqrt, atan2
 import random
@@ -118,7 +125,7 @@ def run_simulations_all_starts(locations):
     return all_results
 
 
-if __name__ == "__main__":
+def run_tsp_cities(city_names=None, max_cities=8, randomize=True):
     sample_cities = [
         "New York, USA",
         "Los Angeles, USA",
@@ -134,11 +141,14 @@ if __name__ == "__main__":
         "Jacksonville, USA",
     ]
 
-    city_locations = build_locations(sample_cities, max_cities=8, randomize=True)
+    if not city_names:
+        city_names = sample_cities
 
+    city_locations = build_locations(city_names, max_cities=max_cities, randomize=randomize)
     if not city_locations:
         raise RuntimeError("No cities were geocoded successfully")
 
+    click_or_print = []
     print("\nLoaded cities:")
     for idx, loc in enumerate(city_locations):
         print(f"{idx:2d}. {loc['city']} ({loc['latitude']:.6f}, {loc['longitude']:.6f})")
@@ -153,3 +163,26 @@ if __name__ == "__main__":
 
     saved_routes = all_simulations
     print(f"\nSaved {len(saved_routes)} simulation outputs in variable 'saved_routes'")
+    return saved_routes
+
+
+if click is not None:
+    @click.command(name="tsp-sim")
+    @click.option("--max-cities", default=8, show_default=True, type=int,
+                  help="Maximum number of cities to include")
+    @click.option("--randomize/--no-randomize", default=True,
+                  help="Randomize city order before building locations")
+    @click.option("--city", "city_names", multiple=True,
+                  help="City names to geocode (repeat option to add more)")
+    def cli(max_cities, randomize, city_names):
+        """Run TSP nearest neighbor simulation on geocoded city names."""
+        names = list(city_names) if city_names else None
+        run_tsp_cities(city_names=names, max_cities=max_cities, randomize=randomize)
+
+    if __name__ == "__main__":
+        cli()
+else:
+    if __name__ == "__main__":
+        print("Click is not installed. Run with python tsm.py after installing click: pip install click")
+        run_tsp_cities()
+

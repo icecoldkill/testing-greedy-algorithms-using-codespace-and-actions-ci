@@ -1,13 +1,26 @@
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
+try:
+    from geopy.geocoders import Nominatim
+    from geopy.exc import GeocoderTimedOut
+except ModuleNotFoundError:
+    Nominatim = None
+
+    class GeocoderTimedOut(Exception):
+        pass
+
 from math import radians, sin, cos, sqrt, atan2
 import random
 import time
 
-geolocator = Nominatim(user_agent="tsp_example")
+if Nominatim is not None:
+    geolocator = Nominatim(user_agent="tsp_example")
+else:
+    geolocator = None
 
 
 def geocode_city(city_name, retries=3):
+    if geolocator is None:
+        raise RuntimeError("geopy is required for geocoding. install geopy or skip geocoding tests")
+
     for i in range(retries):
         try:
             return geolocator.geocode(city_name, timeout=10)
